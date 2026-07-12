@@ -1,0 +1,60 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Every chapter lives on its own post-N branch. Discover them dynamically
+  # so new chapters are picked up without touching this file.
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      branches: ${{ steps.list.outputs.branches }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: List chapter branches
+        id: list
+        run: |
+          branches=$(git ls-remote --heads origin 'post-*' \
+            | sed 's|.*refs/heads/||' \
+            | sort -t- -k2 -n \
+            | jq -R . | jq -cs .)
+          echo "branches=$branches" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(needs.discover.outputs.branches) }}
+    name: ${{ matrix.branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: Install cross-compiler and QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu qemu-system-arm
+
+      # Chapters 11+ link a no_std Rust staticlib built with -Z build-std,
+      # which needs nightly plus the rust-src component.
+      - name: Install Rust nightly
+        if: ${{ hashFiles('rust/Cargo.toml') != '' }}
+        run: rustup toolchain install nightly --profile minimal --component rust-src
+
+      - name: Build kernel.elf
+        run: make CROSS=aarch64-linux-gnu-
+
+      - name: Boot smoke test (10s in QEMU)
+        run: |
+          timeout --foreground 10 qemu-system-aarch64 \
+            -M virt -cpu cortex-a53 -nographic \
+            -kernel kernel.elf > qemu.log 2>&1 || true
+          echo "--- UART output ---"
+          cat qemu.log

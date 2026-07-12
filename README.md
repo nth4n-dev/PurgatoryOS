@@ -1,8 +1,14 @@
 # PurgatoryOS
 
+[![build](https://github.com/nth4n-dev/PurgatoryOS/actions/workflows/build.yml/badge.svg)](https://github.com/nth4n-dev/PurgatoryOS/actions/workflows/build.yml)
+
 A bare-metal AArch64 kernel, written from scratch in C, assembly, and Rust. Built chapter by chapter in the blog series [**From Silicon to Shell**](https://www.biosconfessions.com/posts/from-silicon-to-shell).
 
 No libc, no host OS, just your code and the silicon.
+
+![The PurgatoryOS shell running in QEMU — ls, cat, and echo over the UART](assets/interactive-shell.gif)
+
+*Where the series ends up: chapter 13's interactive shell, booted in QEMU.*
 
 Starting from a cold CPU reset on QEMU's `virt` machine, the series walks through everything needed to reach a working interactive shell:
 
