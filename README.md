@@ -1,21 +1,21 @@
 # PurgatoryOS
 
-A bare-metal AArch64 kernel, written from scratch in C, assembly, and Rust — built chapter by chapter in the blog series [**From Silicon to Shell**](https://www.biosconfessions.com/posts/from-silicon-to-shell).
+A bare-metal AArch64 kernel, written from scratch in C, assembly, and Rust. Built chapter by chapter in the blog series [**From Silicon to Shell**](https://www.biosconfessions.com/posts/from-silicon-to-shell).
 
-No libc. No host OS. Just your code and the silicon.
+No libc, no host OS, just your code and the silicon.
 
 Starting from a cold CPU reset on QEMU's `virt` machine, the series walks through everything needed to reach a working interactive shell:
 
-- **Boot** — an ARM64 assembly stub: EL2 → EL1, BSS, stack, jump to `kernel_main`
-- **UART driver** — MMIO on the PL011, your first `kprint`
-- **Virtual memory** — page tables, translation levels, and the MMU
-- **Interrupts** — exception vectors, the GICv2, and the ARM Generic Timer
-- **Heap allocator** — bump allocator, then a free-list allocator with coalescing
-- **Processes** — a round-robin scheduler and hand-written context switching
-- **System calls** — EL0 tasks trapping into the kernel via `svc`
-- **Rust** — replacing the C allocator with a `no_std` Rust module over FFI
-- **Filesystem** — an in-memory ramdisk with `open`/`read`/`close`
-- **Shell** — a REPL over the UART with `ls`, `cat`, `echo`, and friends
+- **Boot**: an ARM64 assembly stub: EL2 → EL1, BSS, stack, jump to `kernel_main`
+- **UART driver**: MMIO on the PL011, your first `kprint`
+- **Virtual memory**: page tables, translation levels, and the MMU
+- **Interrupts**: exception vectors, the GICv2, and the ARM Generic Timer
+- **Heap allocator**: bump allocator, then a free-list allocator with coalescing
+- **Processes**: a round-robin scheduler and hand-written context switching
+- **System calls**: EL0 tasks trapping into the kernel via `svc`
+- **Rust**: replacing the C allocator with a `no_std` Rust module over FFI
+- **Filesystem**: an in-memory ramdisk with `open`/`read`/`close`
+- **Shell**: a REPL over the UART with `ls`, `cat`, `echo`, and friends
 
 ## How this repo works
 
@@ -91,7 +91,7 @@ include/             # headers
 Makefile             # build, run, gdb, dump targets
 ```
 
-(Layout grows as the series progresses — later branches add `kernel/`, `mm/`, `rust/`, and more.)
+(Layout grows as the series progresses. Later branches add `kernel/`, `mm/`, `rust/`, and more.)
 
 ## License
 
