@@ -44,12 +44,12 @@ git checkout post-4   # code as of Chapter 4
 | 3 | [The ARM Boot Process: From Reset Vector to kernel_main](https://www.biosconfessions.com/posts/from-silicon-to-shell/3-the-arm-boot-process) | [`post-3`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-3) |
 | 4 | [Hello, UART: Your First Kernel Output via the PL011](https://www.biosconfessions.com/posts/from-silicon-to-shell/4-hello-uart) | [`post-4`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-4) |
 | 5 | [Memory Layout & the Linker Script](https://www.biosconfessions.com/posts/from-silicon-to-shell/5-memory-layout-and-the-linker-script) | [`post-5`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-5) |
-| 6 | [Virtual Memory & the MMU: Teaching the CPU to Lie](https://www.biosconfessions.com/posts/from-silicon-to-shell/6-virtual-memory-and-the-mmu) | *coming soon* |
-| 7 | [Exceptions & Interrupts: Teaching Your Kernel to Listen](https://www.biosconfessions.com/posts/from-silicon-to-shell/7-exceptions-and-interrupts) | *coming soon* |
-| 8 | [A Heap Allocator: Teaching the Kernel to Manage Its Own Memory](https://www.biosconfessions.com/posts/from-silicon-to-shell/8-a-heap-allocator) | *coming soon* |
-| 9 | Processes & Context Switching | *coming soon* |
-| 10 | System Calls: Drawing the Line Between User and Kernel | *coming soon* |
-| 11 | Bringing in Rust: A no_std Allocator Under the Kernel | *coming soon* |
+| 6 | [Virtual Memory & the MMU: Teaching the CPU to Lie](https://www.biosconfessions.com/posts/from-silicon-to-shell/6-virtual-memory-and-the-mmu) | [`post-6`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-6) |
+| 7 | [Exceptions & Interrupts: Teaching Your Kernel to Listen](https://www.biosconfessions.com/posts/from-silicon-to-shell/7-exceptions-and-interrupts) | [`post-7`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-7) |
+| 8 | [A Heap Allocator: Teaching the Kernel to Manage Its Own Memory](https://www.biosconfessions.com/posts/from-silicon-to-shell/8-a-heap-allocator) | [`post-8`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-8) |
+| 9 | [Processes & Context Switching: Teaching the Kernel to Multitask](https://www.biosconfessions.com/posts/from-silicon-to-shell/9-processes-and-context-switching) | [`post-9`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-9) |
+| 10 | [System Calls: Drawing the Line Between User and Kernel](https://www.biosconfessions.com/posts/from-silicon-to-shell/10-system-calls) | [`post-10`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-10) |
+| 11 | [Bringing in Rust: A no_std Allocator Under the Kernel](https://www.biosconfessions.com/posts/from-silicon-to-shell/11-bringing-in-rust) | [`post-11`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-11) |
 | 12 | A Simple Filesystem: Turning the Heap Into a Ramdisk | *coming soon* |
 | 13 | Building the Shell: A REPL Over the UART | *coming soon* |
 
