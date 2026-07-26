@@ -1,4 +1,4 @@
-/* src/boot.S */
+/* src/arch/boot.S */
 .section .text.boot
 .global _start
  

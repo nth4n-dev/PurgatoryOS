@@ -15,7 +15,7 @@ CFLAGS  = -g -ffreestanding -nostdlib -mcpu=cortex-a53 -O2 -I include
 LDFLAGS = -T $(SRCDIR)/link.ld
 
 TARGET  = kernel.elf
-OBJS    = $(SRCDIR)/boot.o $(SRCDIR)/kernel.o $(SRCDIR)/drivers/uart.o
+OBJS    = $(SRCDIR)/arch/boot.o $(SRCDIR)/kernel.o $(SRCDIR)/drivers/uart.o
 
 all: $(TARGET)
 
