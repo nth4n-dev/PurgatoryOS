@@ -4,6 +4,7 @@
 #include "kernel/exceptions.h"
 #include "kernel/gic.h"
 #include "kernel/timer.h"
+#include "kernel/heap.h"
 
 void kernel_main(void) {
     mmu_init();
@@ -22,6 +23,32 @@ void kernel_main(void) {
     /* Timer: 500 ms interval, fires INTID 30. */
     timer_init(500);
     kprint("Timer: armed\n");
+
+    /* The heap must be up before any dynamic allocation. */
+    heap_init();
+    kprint("Heap: ready\n");
+
+    /* Smoke test: allocate, free, re-allocate */
+    void *a = kmalloc(128);
+    void *b = kmalloc(64);
+    void *c = kmalloc(256);
+
+    kprint("[test] allocated a, b, c\n");
+    heap_dump();
+
+    kfree(b);
+    kprint("[test] freed b\n");
+    heap_dump();
+
+    void *d = kmalloc(48);
+    kprint("[test] allocated d (should reuse b slot)\n");
+    heap_dump();
+
+    kfree(a);
+    kfree(c);
+    kfree(d);
+    kprint("[test] freed all: heap should be mostly coalesced\n");
+    heap_dump();
 
     /* Unmask IRQs at the CPU. From here on, interrupts can fire. */
     asm volatile("msr daifclr, #2");   /* clear IRQ mask bit in PSTATE */
