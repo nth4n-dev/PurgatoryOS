@@ -2,20 +2,21 @@
  *
  * Memory Management Unit initialisation.
  *
- * Builds a three-level AArch64 page table (L0, L1, L2) with an identity
- * map. Every virtual address equals its physical address.
+ * Sets up a three-level AArch64 page table (L0 → L1 → L2) with an
+ * identity map (VA = PA), enables MAIR_EL1, TCR_EL1, and then flips
+ * SCTLR_EL1.M to bring the MMU online.
  *
- * The first gigabyte holds peripherals, so it maps through an L2 table
- * of Device-nGnRnE blocks. That covers the PL011 UART at 0x09000000.
- * Kernel RAM at 0x40000000 maps as Normal write-back cacheable.
- *
- * mmu_init writes MAIR_EL1 and TCR_EL1, then sets SCTLR_EL1.M to bring
- * the MMU online.
- *
- * From Silicon to Shell, Post 6: Virtual Memory and the MMU
+ * From Silicon to Shell. Post 6: Virtual Memory & the MMU
  */
 #ifndef KERNEL_MMU_H
 #define KERNEL_MMU_H
+
+#define DESC_AP_RW_ALL  (1UL << 6)
+
+/* Update your User Block definition */
+#define BLOCK_NORMAL_USER \
+(DESC_VALID | DESC_BLOCK | DESC_AF | \
+DESC_SH_INNER | DESC_AP_RW_ALL | DESC_ATTR(0))
 
 void mmu_init(void);
 

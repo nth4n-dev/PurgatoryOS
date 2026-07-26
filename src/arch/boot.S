@@ -1,7 +1,7 @@
 /* src/arch/boot.S */
 .section .text.boot
 .global _start
- 
+
 _start:
   /* Check current Exception Level */
   mrs  x0, CurrentEL
@@ -22,10 +22,17 @@ _start:
   eret
 
 .el1_ready:
-  /* Enable FP and SIMD at EL1. */
-  /* Without this you get an Undefined Instruction exception when GCC optimises
-     zeroing loops or memory copies using Q/V registers. */
-  mov  x0, #(3 << 20)   /* CPTR_EL1.FPEN = 0b11 (No trap) */
+  /* --- FIX 1: Set Exception Vector Base Address --- */
+  /* This ensures that if a fault occurs, the CPU jumps to your 
+     actual vector code instead of address 0x0/0x200. */
+  ldr  x0, =vectors
+  msr  vbar_el1, x0
+  isb
+
+  /* --- FIX 2: Enable FP/SIMD at EL1 --- */
+  /* Prevents Undefined Instruction exception when GCC uses
+     NEON/SIMD registers (Q0-Q31) for zeroing BSS or copying memory. */
+  mov  x0, #(3 << 20)   /* CPTR_EL1.FPEN = 0b11 (Enable access) */
   msr  cpacr_el1, x0
   isb
 
@@ -43,5 +50,8 @@ _start:
   b    .zero_bss
 
 .call_kernel:
+  /* Ensure memory is synced before jumping to C code */
+  dsb  sy
+  isb
   bl   kernel_main
   b    .                /* Halt if kernel_main returns */

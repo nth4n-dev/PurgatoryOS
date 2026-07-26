@@ -34,6 +34,8 @@
  * Keep small: the scheduler array is O(1) per switch but O(n) per look-up. */
 #define MAX_TASKS  8
 
+#define USER_STACK_SIZE  (12 * 1024)
+
 /* Task state */
 
 typedef enum {
@@ -95,13 +97,27 @@ typedef struct {
 
 /* Process control block */
 
+/* Extra per-task state for EL0 tasks.  When a task is running at EL0 these
+ * are live in SP_EL0 / ELR_EL1 / SPSR_EL1.  When a task is preempted, we
+ * snapshot them here before another task runs.  At scheduler_start time
+ * they are initialised by task_create. */
+typedef struct {
+    uint64_t sp_el0;      /* user stack pointer                              */
+    uint64_t elr_el1;     /* PC to resume at. Initially the entry function */
+    uint64_t spsr_el1;    /* saved PSTATE. Always 0 for a fresh EL0 task   */
+} user_context_t;
+
+
 typedef struct pcb {
-    uint32_t        pid;           /* unique task identifier (index into runqueue) */
-    task_state_t    state;         /* current scheduling state */
-    cpu_context_t   ctx;           /* saved register state (valid when not running) */
-    uint8_t        *stack_base;    /* lowest address of this task's stack (for bounds check) */
-    size_t          stack_size;    /* stack size in bytes */
-    void          (*entry)(void);  /* original entry point (stored for debug/restart) */
+    uint32_t        pid;
+    task_state_t    state;
+    cpu_context_t   ctx;           /* kernel-side callee-saved state. Post 9 */
+    user_context_t  uctx;          /* user-side ELR / SPSR / SP_EL0. New     */
+    uint8_t        *kstack_base;   /* per-task SP_EL1 backing memory          */
+    uint8_t        *ustack_base;   /* per-task SP_EL0 backing memory          */
+    size_t          kstack_size;
+    size_t          ustack_size;
+    void          (*entry)(void);
 } pcb_t;
 
 /* Public API */
@@ -145,6 +161,17 @@ void scheduler_yield(void);
  * current task does not need to call this itself.
  */
 void scheduler_tick(void);
+
+/*
+ * task_kill_current: mark the running task TASK_DEAD and switch to the next.
+ * Does not return.
+ */
+void task_kill_current(void);
+
+/*
+ * current_task_pid: return the PID of the currently running task.
+ */
+uint32_t current_task_pid(void);
 
 /* Assembly primitive (defined in arch/arm64/context_switch.S) */
 

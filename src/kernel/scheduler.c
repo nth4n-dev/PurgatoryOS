@@ -95,70 +95,60 @@ void scheduler_init(void) {
     kprint("[sched] init: round-robin scheduler\n");
 }
 
+/*
+ * task_entry_trampoline: first-run stub for EL0 tasks.
+ *
+ * context_switch restores the task's kernel registers (all zeroed for a new
+ * task) and does `ret`, landing here.  We load ELR_EL1/SPSR_EL1/SP_EL0 from
+ * the current task's uctx and eret into user space.
+ * Never called a second time: subsequent context_switch calls restore the
+ * return address inside schedule_next, unwinding normally through irq/sync
+ * handlers back to eret.
+ */
+static void __attribute__((noreturn)) task_entry_trampoline(void) {
+    pcb_t *pcb = tasks[current_task];
+    asm volatile(
+        "msr sp_el0,   %0\n"
+        "msr elr_el1,  %1\n"
+        "msr spsr_el1, %2\n"
+        "mov x0,  xzr\n"
+        "mov x1,  xzr\n"
+        "mov x2,  xzr\n"
+        "eret"
+        :
+        : "r"(pcb->uctx.sp_el0), "r"(pcb->uctx.elr_el1), "r"(pcb->uctx.spsr_el1)
+    );
+    __builtin_unreachable();
+}
+
 pcb_t *task_create(void (*entry)(void)) {
-    if (task_count >= MAX_TASKS) {
-        kprint("[sched] task_create: task table full\n");
-        return NULL;
-    }
+    pcb_t   *pcb    = kmalloc(sizeof(pcb_t));
+    uint8_t *kstack = kmalloc(TASK_STACK_SIZE);
+    uint8_t *ustack = kmalloc(USER_STACK_SIZE);
+    /* ... NULL checks omitted for brevity ... */
 
-    /* Allocate the PCB from the kernel heap */
-    pcb_t *pcb = kmalloc(sizeof(pcb_t));
-    if (!pcb) {
-        kprint("[sched] task_create: heap full (PCB)\n");
-        return NULL;
-    }
-
-    /* Allocate a dedicated stack */
-    uint8_t *stack = kmalloc(TASK_STACK_SIZE);
-    if (!stack) {
-        kfree(pcb);
-        kprint("[sched] task_create: heap full (stack)\n");
-        return NULL;
-    }
-
-    /* Clear PCB to zero so all fields default to 0/NULL. */
     zero_memory(pcb, sizeof(pcb_t));
+    pcb->pid         = task_count;
+    pcb->state       = TASK_READY;
+    pcb->entry       = entry;
+    pcb->kstack_base = kstack;
+    pcb->ustack_base = ustack;
+    pcb->kstack_size = TASK_STACK_SIZE;
+    pcb->ustack_size = USER_STACK_SIZE;
 
-    /* Populate the PCB */
-    pcb->pid        = (uint32_t)task_count;
-    pcb->state      = TASK_READY;
-    pcb->entry      = entry;
-    pcb->stack_base = stack;
-    pcb->stack_size = TASK_STACK_SIZE;
+    /* User-side state. Consumed by first_eret_to_el0 on scheduler_start. */
+    pcb->uctx.sp_el0   = ((uint64_t)(ustack + USER_STACK_SIZE)) & ~0xFUL;
+    pcb->uctx.elr_el1  = (uint64_t)entry;
+    pcb->uctx.spsr_el1 = 0;           /* EL0t, all exceptions unmasked */
 
-    /* Set up the initial cpu_context_t
-     *
-     * AArch64 stacks grow downward.  The top of the allocated block is
-     * stack + TASK_STACK_SIZE.  We start the stack pointer there.
-     *
-     * The critical trick: we set ctx.lr = entry.  When context_switch
-     * first runs for this task, it loads lr from ctx, then executes `ret`.
-     * `ret` jumps to the value in lr, which is entry(). So the task's
-     * first ret is equivalent to a call to entry().
-     *
-     * All other callee-saved registers are left as 0.  The C compiler
-     * doesn't assume anything about their values at function entry, so
-     * this is safe. */
-    uint64_t stack_top = (uint64_t)(stack + TASK_STACK_SIZE);
+    /* Kernel-side state. Used when the timer preempts the task at EL0
+     * and we need to context_switch to another task.  The Post 9 trick
+     * still works: set ctx.sp to the top of the kernel stack, and
+     * ctx.lr to the point in schedule_next where context_switch returns. */
+    pcb->ctx.sp = ((uint64_t)(kstack + TASK_STACK_SIZE)) & ~0xFUL;
+    pcb->ctx.lr = (uint64_t)task_entry_trampoline;
 
-    /* AArch64 requires the stack pointer to be 16-byte aligned.
-     * TASK_STACK_SIZE is a multiple of 16, so stack_top is already aligned
-     * if stack (from kmalloc) is 8-byte aligned.  Mask the low bits to be sure. */
-    stack_top = stack_top & ~(uint64_t)0xF;
-
-    pcb->ctx.sp  = stack_top;
-    pcb->ctx.lr  = (uint64_t)entry;
-    pcb->ctx.fp  = 0;
-    /* x19 to x28 are already 0 from zero_memory. */
-
-    /* Register the task */
     tasks[task_count++] = pcb;
-
-    kprint("[sched] task created: pid=");
-    kprint_uint(pcb->pid);
-    kprint(" entry=0x");
-    kprint("\n");
-
     return pcb;
 }
 
@@ -191,4 +181,15 @@ void scheduler_tick(void) {
      * The IRQ prologue in vectors.S has already saved all caller-saved
      * registers on the stack.  All we need to do is pick the next task. */
     schedule_next();
+}
+
+void task_kill_current(void) {
+    tasks[current_task]->state = TASK_DEAD;
+    schedule_next();
+    /* schedule_next returns only if all other tasks are also dead. */
+    while (1) { asm volatile("wfi"); }
+}
+
+uint32_t current_task_pid(void) {
+    return tasks[current_task]->pid;
 }

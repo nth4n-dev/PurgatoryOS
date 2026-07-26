@@ -23,25 +23,25 @@ vectors:
   b \label
 .endm
 
-/* ── Group 0: Current EL, SP_EL0 (not used in our kernel) ── */
+/* Group 0: Current EL, SP_EL0 (not used in our kernel) */
 VENTRY  el1t_sync           /* 0x000 */
 VENTRY  el1t_irq            /* 0x080 */
 VENTRY  el1t_fiq            /* 0x100 */
 VENTRY  el1t_serror         /* 0x180 */
 
-/* ── Group 1: Current EL, SP_EL1 (our normal kernel context) ── */
-VENTRY  el1h_sync           /* 0x200: kernel fault */
-VENTRY  el1h_irq            /* 0x280: timer, UART and GIC interrupts */
+/* Group 1: Current EL, SP_EL1 (our normal kernel context) */
+VENTRY  el1h_sync           /* 0x200. Kernel fault */
+VENTRY  el1h_irq            /* 0x280. Timer, UART, GIC interrupts */
 VENTRY  el1h_fiq            /* 0x300 */
 VENTRY  el1h_serror         /* 0x380 */
 
-/* ── Group 2: Lower EL, AArch64 (future user-space syscalls) ── */
+/* Group 2: Lower EL, AArch64 (future user-space syscalls) */
 VENTRY  el0_sync_64         /* 0x400 */
 VENTRY  el0_irq_64          /* 0x480 */
 VENTRY  el0_fiq_64          /* 0x500 */
 VENTRY  el0_serror_64       /* 0x580 */
 
-/* ── Group 3: Lower EL, AArch32 (not supported) ── */
+/* Group 3: Lower EL, AArch32 (not supported) */
 VENTRY  el0_sync_32         /* 0x600 */
 VENTRY  el0_irq_32          /* 0x680 */
 VENTRY  el0_fiq_32          /* 0x700 */
@@ -50,9 +50,9 @@ VENTRY  el0_serror_32       /* 0x780 */
 /*
 * MACRO: SAVE_REGS
 * Push all general-purpose registers onto the stack before calling C.
-* We save x0 to x29 (30 registers, 240 bytes), plus x30 (the link
+* We save x0 to x29 (30 registers = 240 bytes), plus x30 (the link
 * register). The stack must remain 16-byte aligned at all times on
-* AArch64. Using stp with a #-16 pre-decrement handles this in pairs.
+* AArch64: stp with #-16 pre-decrement handles this in pairs.
 */
 .macro SAVE_REGS
   stp x0,  x1,  [sp, #-16]!
@@ -92,7 +92,7 @@ VENTRY  el0_serror_32       /* 0x780 */
   ldp x0,  x1,  [sp], #16
 .endm
 
-/* ── Concrete handler stubs ── */
+/* Concrete handler stubs */
 el1h_sync:
   SAVE_REGS
   bl  sync_exception_handler
@@ -105,14 +105,21 @@ el1h_irq:
   RESTORE_REGS
   eret
 
-/* Every unimplemented entry spins. Each one is a bug we have not handled yet. */
+el0_sync_64:
+  SAVE_REGS
+  mrs  x0, esr_el1
+  mov  x1, sp
+  bl   el0_sync_handler
+  RESTORE_REGS
+  eret
+
+/* All unimplemented entries spin. They are bugs we haven't handled yet */
 el1t_sync:
 el1t_irq:
 el1t_fiq:
 el1t_serror:
 el1h_fiq:
 el1h_serror:
-el0_sync_64:
 el0_irq_64:
 el0_fiq_64:
 el0_serror_64:
@@ -120,4 +127,4 @@ el0_sync_32:
 el0_irq_32:
 el0_fiq_32:
 el0_serror_32:
-  b .  /* spin, this is unrecoverable */
+  b .  /* spin. Unrecoverable */
