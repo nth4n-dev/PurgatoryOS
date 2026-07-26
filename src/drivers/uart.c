@@ -8,18 +8,18 @@ void uart_init(void) {
     /*
      * Set baud rate. QEMU's virt machine uses a 24 MHz UART clock.
      * For 115200 baud:   divisor = 24000000 / (16 * 115200) = 13.020833...
-     *   Integer part:    13, so UARTIBRD = 13
-     *   Fractional part: 0.020833 * 64 is about 1, so UARTFBRD = 1
+     *   Integer part:   13   → UARTIBRD = 13
+     *   Fractional part: 0.020833 * 64 ≈ 1  → UARTFBRD = 1
      *
-     * QEMU ignores the baud rate, so the UART works without this.
-     * Real hardware does not. We set it properly anyway.
+     * On QEMU, the UART works even without this. QEMU ignores baud
+     * rate configuration. But real hardware requires it, so we do it right.
      */
     UART_REG(UARTIBRD)  = 13;
     UART_REG(UARTFBRD)  = 1;
 
     /*
      * Line control: 8-bit word length, FIFOs enabled, 1 stop bit, no parity.
-     * The UARTLCR_H write must come after the baud rate. Writing
+     * The UARTLCR_H write must happen AFTER setting baud rate. Writing
      * UARTLCR_H latches the baud rate divisors into the internal registers.
      */
     UART_REG(UARTLCR_H) = UARTLCR_WLEN8 | UARTLCR_FEN;
@@ -43,4 +43,10 @@ void uart_puts(const char *s) {
 
 void kprint(const char *s) {
     uart_puts(s);
+}
+
+char uart_getc(void) {
+  while (UART_REG(UARTFR) & UARTFR_RXFE);                               /* spin until a byte arrives */
+
+  return (char)(UART_REG(UARTDR) & 0xFF);
 }

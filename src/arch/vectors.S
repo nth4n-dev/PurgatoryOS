@@ -113,6 +113,12 @@ el0_sync_64:
   RESTORE_REGS
   eret
 
+el0_irq_64:
+  SAVE_REGS
+  bl  irq_handler
+  RESTORE_REGS
+  eret
+
 /* All unimplemented entries spin. They are bugs we haven't handled yet */
 el1t_sync:
 el1t_irq:
@@ -120,7 +126,6 @@ el1t_fiq:
 el1t_serror:
 el1h_fiq:
 el1h_serror:
-el0_irq_64:
 el0_fiq_64:
 el0_serror_64:
 el0_sync_32:

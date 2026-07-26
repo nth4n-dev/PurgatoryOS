@@ -138,6 +138,39 @@ impl Vfs {
         buf[..n].copy_from_slice(&data[offset..offset + n]);
         Some(n)
     }
+
+    /// Copy the names of `id`'s directory entries into `dst` as a
+    /// sequence of NUL-terminated strings, in BTreeMap iteration order.
+    /// Returns the number of names written, or -1 if `id` is not a
+    /// directory. Truncation is silent. Names that don't fit are
+    /// dropped, and the caller sees a smaller count than the directory
+    /// actually has.
+    ///
+    /// Wire format: name1\0name2\0name3\0 .... The C side walks it
+    /// with a loop of strlen() calls. Cheaper across FFI than passing an
+    /// array of pointers, and avoids any allocation in the readdir path.
+    pub fn readdir(&self, id: NodeId, dst: &mut [u8]) -> i64 {
+        let node = match self.nodes.get(&id) {
+            Some(n) => n,
+            None    => return -1,
+        };
+        let children = match &node.kind {
+            NodeKind::Directory(c) => c,
+            NodeKind::File(_)      => return -1,
+        };
+
+        let mut off: usize = 0;
+        let mut n:   i64   = 0;
+        for (name, _child_id) in children.iter() {
+            let bytes = name.as_bytes();
+            if off + bytes.len() + 1 > dst.len() { break; }
+            dst[off..off + bytes.len()].copy_from_slice(bytes);
+            dst[off + bytes.len()] = 0;
+            off += bytes.len() + 1;
+            n   += 1;
+        }
+        n
+    }
 }
 
 /// The one true filesystem. A Mutex because, just like the allocator,

@@ -3,7 +3,7 @@ use crate::allocator::ALLOCATOR;
 use core::arch::asm;
 use crate::fs::{VFS, seed as fs_seed};
 use core::slice;
- 
+
 /// RAII: mask IRQs on construction, restore on Drop.
 struct IrqGuard { prev: u64 }
 
@@ -104,4 +104,18 @@ pub extern "C" fn fs_read(
 #[unsafe(no_mangle)]
 pub extern "C" fn fs_close(_id: u32) -> i64 {
   0
+}
+
+/// C entry point: for a directory NodeId, copy up to `cap` names into
+/// `dst` as NUL-separated strings, and return how many names were
+/// written. Returns -1 if `id` is not a directory.
+#[unsafe(no_mangle)]
+pub extern "C" fn fs_readdir(id: u32, dst_ptr: *mut u8, cap: usize) -> i64 {
+    if dst_ptr.is_null() || cap == 0 { return 0; }
+    let _g = IrqGuard::new();
+
+    // SAFETY: caller promises (dst_ptr, cap) is a valid kernel-side
+    // buffer, exactly as in fs_read.
+    let dst = unsafe { slice::from_raw_parts_mut(dst_ptr, cap) };
+    VFS.lock().readdir(id, dst)
 }

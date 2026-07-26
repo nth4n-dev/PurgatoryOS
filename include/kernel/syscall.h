@@ -13,7 +13,8 @@ typedef enum {
     SYS_YIELD  = 4,
     SYS_OPEN   = 5,
     SYS_READ   = 6,
-    SYS_CLOSE  = 7,
+    SYS_CLOSE   = 7,
+    SYS_READDIR = 8,
     SYS_MAX
 } syscall_nr_t;
 
@@ -44,5 +45,7 @@ int64_t sys_open(const char *path, uint64_t len);
 int64_t sys_read(int fd, char *buf, uint64_t len);
 
 int64_t sys_close(int fd);
+
+int64_t sys_readdir(int fd, char *buf, uint64_t cap);
 
 #endif //PURGATORY_SYSCALL_H

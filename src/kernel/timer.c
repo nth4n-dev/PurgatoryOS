@@ -30,24 +30,6 @@ void timer_init(uint32_t interval_ms) {
 void timer_tick(void) {
     tick_count++;
 
-    /* Print a simple tick message */
-    kprint("tick #");
-    /* Quick inline decimal print for small numbers */
-    uint64_t n = tick_count;
-    char buf[20];
-    int i = 0;
-    if (n == 0) { buf[i++] = '0'; }
-    else {
-        while (n > 0) { buf[i++] = '0' + (n % 10); n /= 10; }
-        /* reverse */
-        for (int l = 0, r = i - 1; l < r; l++, r--) {
-            char t = buf[l]; buf[l] = buf[r]; buf[r] = t;
-        }
-    }
-    buf[i] = '\0';
-    kprint(buf);
-    kprint("\n");
-
     /* Re-arm: write the same countdown so the timer fires again */
     asm volatile("msr cntp_tval_el0, %0" :: "r"(reload_ticks));
 

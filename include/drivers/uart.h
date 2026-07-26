@@ -28,6 +28,8 @@
 #define UARTCR_TXE      (1 << 8)    /* Transmit enable    */
 #define UARTCR_RXE      (1 << 9)    /* Receive enable     */
 
+#define UARTFR_RXFE     (1 << 4) 
+
 /* Helper macro: read a PL011 register */
 #define UART_REG(offset) \
     (*(volatile uint32_t *)(UART_BASE + (offset)))
@@ -36,5 +38,6 @@ void uart_init(void);
 void uart_putc(char c);
 void uart_puts(const char *s);
 void kprint(const char *s);
+char uart_getc(void);
 
 #endif /* UART_H */

@@ -8,6 +8,7 @@
 extern uint32_t fs_open(const char *path, uint64_t len);
 extern int64_t  fs_read(uint32_t id, uint64_t off, char *dst, uint64_t len);
 extern int64_t  fs_close(uint32_t id);
+extern int64_t  fs_readdir(uint32_t id, char *dst, uint64_t cap);
 
 /* Saved register frame layout. Must match SAVE_REGS in vectors.S.
  * Registers are pushed in pairs, lowest index at lowest address. */
@@ -79,8 +80,15 @@ static int64_t k_sys_open(const char *user_path, uint64_t len) {
 }
 
 static int64_t k_sys_read(int fd, char *user_buf, uint64_t len) {
+    if (user_buf == NULL || len == 0) return 0;
+
+    /* fd 0 = stdin: blocking read one character from the UART. */
+    if (fd == 0) {
+        user_buf[0] = uart_getc();
+        return 1;
+    }
+
     if (fd < 0 || fd >= MAX_OPEN_FILES) return EBADF;
-    if (user_buf == NULL || len == 0)   return 0;
 
     pcb_t *me = current_task_pcb();
     fd_entry_t *slot = &me->fds[fd];
@@ -110,6 +118,22 @@ static int64_t k_sys_close(int fd) {
     me->fds[fd].node_id = 0;
     me->fds[fd].offset  = 0;
     return 0;
+}
+
+static int64_t k_sys_readdir(int fd, char *user_buf, uint64_t cap) {
+    if (fd < 0 || fd >= MAX_OPEN_FILES) return EBADF;
+    if (user_buf == NULL || cap == 0)   return EINVAL;
+
+    pcb_t *me = current_task_pcb();
+    if (me->fds[fd].node_id == 0) return EBADF;
+
+    char kbuf[256];
+    uint64_t chunk = cap > sizeof(kbuf) ? sizeof(kbuf) : cap;
+    int64_t n = fs_readdir(me->fds[fd].node_id, kbuf, chunk);
+    if (n < 0) return n;
+
+    copy_to_user(user_buf, kbuf, chunk);
+    return n;
 }
 
 void el0_sync_handler(uint64_t esr, regs_t *r) {
@@ -149,13 +173,14 @@ typedef int64_t (*syscall_fn)(uint64_t, uint64_t, uint64_t,
                               uint64_t, uint64_t, uint64_t);
 
 static syscall_fn syscall_table[SYS_MAX] = {
-    [SYS_WRITE]  = (syscall_fn)k_sys_write,
-    [SYS_EXIT]   = (syscall_fn)k_sys_exit,
-    [SYS_GETPID] = (syscall_fn)k_sys_getpid,
-    [SYS_YIELD]  = (syscall_fn)k_sys_yield,
-    [SYS_OPEN]   = (syscall_fn)k_sys_open,
-    [SYS_READ]   = (syscall_fn)k_sys_read,
-    [SYS_CLOSE]  = (syscall_fn)k_sys_close,
+    [SYS_WRITE]   = (syscall_fn)k_sys_write,
+    [SYS_EXIT]    = (syscall_fn)k_sys_exit,
+    [SYS_GETPID]  = (syscall_fn)k_sys_getpid,
+    [SYS_YIELD]   = (syscall_fn)k_sys_yield,
+    [SYS_OPEN]    = (syscall_fn)k_sys_open,
+    [SYS_READ]    = (syscall_fn)k_sys_read,
+    [SYS_CLOSE]   = (syscall_fn)k_sys_close,
+    [SYS_READDIR] = (syscall_fn)k_sys_readdir,
 };
 
 /* syscall_init. Called once from kernel_main before any EL0 code runs.
@@ -173,7 +198,7 @@ void syscall_init(void) {
             while (1) { asm volatile("wfi"); }
         }
     }
-    kprint("[sys] init: 4 syscalls registered (write/exit/getpid/yield)\n");
+    kprint("[sys] init: syscalls registered (write/exit/getpid/yield/open/read/close/readdir)\n");
 }
 
 int64_t syscall_dispatch(regs_t *r) {

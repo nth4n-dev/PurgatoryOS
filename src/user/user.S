@@ -43,3 +43,9 @@ sys_close:
     mov x8, #7
     svc #0
     ret
+
+.global sys_readdir
+sys_readdir:
+    mov x8, #8
+    svc #0
+    ret
