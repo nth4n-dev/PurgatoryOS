@@ -11,11 +11,11 @@ OBJDUMP = $(CROSS)objdump
 SRCDIR  = src
 
 ASFLAGS = -g
-CFLAGS  = -g -ffreestanding -nostdlib -mcpu=cortex-a53 -O2
+CFLAGS  = -g -ffreestanding -nostdlib -mcpu=cortex-a53 -O2 -I include
 LDFLAGS = -T $(SRCDIR)/link.ld
 
 TARGET  = kernel.elf
-OBJS    = $(SRCDIR)/boot.o $(SRCDIR)/kernel.o
+OBJS    = $(SRCDIR)/boot.o $(SRCDIR)/kernel.o $(SRCDIR)/drivers/uart.o
 
 all: $(TARGET)
 
