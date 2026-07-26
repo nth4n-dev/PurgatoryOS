@@ -1,0 +1,18 @@
+[package]
+name    = "purgatory_rs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name       = "purgatory_rs"
+crate-type = ["staticlib"]   # produce libpurgatory_rs.a (not .rlib)
+
+[dependencies]
+spin = { version = "0.9", default-features = false, features = ["mutex", "spin_mutex"] }   # no_std spin-lock
+
+[profile.release]
+panic        = "abort"   # no unwinding — we're in a kernel
+opt-level    = 2         # match the C CFLAGS
+lto          = true      # allow inlining across our own modules
+codegen-units = 1        # also for LTO
+overflow-checks = true   # keep them on — we'd rather panic than wrap

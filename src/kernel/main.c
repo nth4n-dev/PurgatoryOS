@@ -8,6 +8,7 @@
 #include "kernel/scheduler.h"
 #include "kernel/syscall.h"
 
+extern void rust_heap_init(void); 
 
 static void kprint_uint_inline(uint32_t n) {
     char buf[12];
@@ -43,17 +44,8 @@ static void task_b(void) {
     sys_exit(0);
 }
 
-/* Kernel entry */
-
-/* Raw UART write usable before uart_init. QEMU PL011 at 0x09000000 */
-static inline void raw_putc(char c) {
-    *(volatile unsigned int *)0x09000000UL = (unsigned int)c;
-}
-
 void kernel_main(void) {
-    raw_putc('A');   /* confirm kernel_main entered */
     mmu_init();
-    raw_putc('B');   /* confirm mmu_init returned */
     uart_init();
     kprint("PurgatoryOS booting...\n");
 
@@ -66,7 +58,7 @@ void kernel_main(void) {
     timer_init(500);
     kprint("Timer: armed\n");
 
-    heap_init();
+    rust_heap_init();
     kprint("Heap: ready\n");
 
     scheduler_init();
