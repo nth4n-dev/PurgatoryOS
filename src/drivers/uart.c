@@ -19,7 +19,7 @@ void uart_init(void) {
 
     /*
      * Line control: 8-bit word length, FIFOs enabled, 1 stop bit, no parity.
-     * The UARTLCR_H write must happen AFTER setting baud rate
+     * The UARTLCR_H write must come after the baud rate. Writing
      * UARTLCR_H latches the baud rate divisors into the internal registers.
      */
     UART_REG(UARTLCR_H) = UARTLCR_WLEN8 | UARTLCR_FEN;
