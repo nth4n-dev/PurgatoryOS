@@ -5,6 +5,39 @@
 #include "kernel/gic.h"
 #include "kernel/timer.h"
 #include "kernel/heap.h"
+#include "kernel/scheduler.h"
+
+
+static void kprint_uint_inline(uint32_t n) {
+    char buf[12];
+    int pos = 11;
+    buf[pos] = '\0';
+    if (n == 0) { buf[--pos] = '0'; }
+    while (n > 0) { buf[--pos] = '0' + (n % 10); n /= 10; }
+    kprint(&buf[pos]);
+}
+
+static void task_a(void) {
+    uint32_t count = 0;
+    while (1) {
+        kprint("[task A] count=");
+        kprint_uint_inline(count++);
+        kprint("\n");
+        scheduler_yield();
+    }
+}
+
+static void task_b(void) {
+    uint32_t count = 0;
+    while (1) {
+        kprint("[task B] count=");
+        kprint_uint_inline(count++);
+        kprint("\n");
+        scheduler_yield();
+    }
+}
+
+/* Kernel entry */
 
 void kernel_main(void) {
     mmu_init();
@@ -12,52 +45,40 @@ void kernel_main(void) {
 
     kprint("PurgatoryOS booting...\n");
 
-    /* Exception vectors. Install VBAR_EL1 before we unmask interrupts. */
+    /* Exception vectors. Install VBAR_EL1 before we unmask interrupts */
     exceptions_init();
     kprint("Exceptions: ready\n");
 
-    /* GIC: enable the distributor and the CPU interface. */
+    /* GIC. Enable the distributor and CPU interface */
     gic_init();
     kprint("GIC: ready\n");
 
-    /* Timer: 500 ms interval, fires INTID 30. */
+    /* Timer. Fires every 500 ms, calls scheduler_tick via timer_tick() */
     timer_init(500);
     kprint("Timer: armed\n");
 
-    /* The heap must be up before any dynamic allocation. */
+    /* Heap. Must be up before any kmalloc in scheduler or task_create */
     heap_init();
     kprint("Heap: ready\n");
 
-    /* Smoke test: allocate, free, re-allocate */
-    void *a = kmalloc(128);
-    void *b = kmalloc(64);
-    void *c = kmalloc(256);
+    /* Scheduler. Initialise the runqueue before creating tasks */
+    scheduler_init();
 
-    kprint("[test] allocated a, b, c\n");
-    heap_dump();
+    /* Create the two initial tasks.
+     * task_create allocates a PCB + stack from the heap and sets up
+     * the initial cpu_context_t so the first context switch calls entry(). */
+    task_create(task_a);
+    task_create(task_b);
 
-    kfree(b);
-    kprint("[test] freed b\n");
-    heap_dump();
+    /* Unmask IRQs at the CPU so the timer interrupt can preempt tasks */
+    asm volatile("msr daifclr, #2");
+    kprint("Interrupts enabled.\n");
 
-    void *d = kmalloc(48);
-    kprint("[test] allocated d (should reuse b slot)\n");
-    heap_dump();
+    /* Hand control to the scheduler permanently.
+     * This call never returns. Kernel_main's stack is abandoned. */
+    kprint("Starting scheduler...\n");
+    scheduler_start();
 
-    kfree(a);
-    kfree(c);
-    kfree(d);
-    kprint("[test] freed all: heap should be mostly coalesced\n");
-    heap_dump();
-
-    /* Unmask IRQs at the CPU. From here on, interrupts can fire. */
-    asm volatile("msr daifclr, #2");   /* clear IRQ mask bit in PSTATE */
-
-    kprint("Interrupts enabled. Waiting for timer...\n");
-
-    while (1) {
-        /* wfi means Wait For Interrupt. It puts the CPU into a low-power state
-         * until an interrupt arrives. Much better than a busy spin. */
-        asm volatile("wfi");
-    }
+    /* Unreachable. Here for safety */
+    while (1) { asm volatile("wfi"); }
 }

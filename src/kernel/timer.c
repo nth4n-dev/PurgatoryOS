@@ -1,6 +1,7 @@
 /* src/kernel/timer.c */
 #include "kernel/timer.h"
 #include "kernel/gic.h"
+#include "kernel/scheduler.h"
 #include "drivers/uart.h"
 
 static volatile uint64_t tick_count = 0;
@@ -14,7 +15,7 @@ void timer_init(uint32_t interval_ms) {
     /* 2. Calculate the number of ticks for the desired interval */
     reload_ticks = (freq * (uint64_t)interval_ms) / 1000ULL;
 
-    /* 3. Write the countdown value. The timer fires once the counter
+    /* 3. Write the countdown value. Timer fires when the counter
      *    has advanced by this many ticks from now. */
     asm volatile("msr cntp_tval_el0, %0" :: "r"(reload_ticks));
 
@@ -49,6 +50,11 @@ void timer_tick(void) {
 
     /* Re-arm: write the same countdown so the timer fires again */
     asm volatile("msr cntp_tval_el0, %0" :: "r"(reload_ticks));
+
+    /* Preemptive scheduling: let the scheduler pick the next task.
+     * The timer IRQ is the "heartbeat" that drives preemption.
+     * scheduler_tick() calls context_switch() if another task is ready. */
+    scheduler_tick();
 }
 
 uint64_t timer_get_ticks(void) {
