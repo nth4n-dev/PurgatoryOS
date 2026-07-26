@@ -193,3 +193,7 @@ void task_kill_current(void) {
 uint32_t current_task_pid(void) {
     return tasks[current_task]->pid;
 }
+
+pcb_t *current_task_pcb(void) {
+    return tasks[current_task];
+}

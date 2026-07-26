@@ -9,6 +9,7 @@
 #include "kernel/syscall.h"
 
 extern void rust_heap_init(void); 
+extern void fs_init(void);
 
 static void kprint_uint_inline(uint32_t n) {
     char buf[12];
@@ -29,6 +30,18 @@ static const char msg_b[] = "[task B] tick\n";
 /* Move functions to a user-code section (Executable) */
 __attribute__((section(".text.user")))
 static void task_a(void) {
+    char buf[64];
+    int64_t fd = sys_open("/etc/motd", 9);   
+
+    if (fd < 0) {
+        sys_write(1, "open failed\n", 12);
+        sys_exit(1);
+    }
+
+    int64_t n = sys_read(fd, buf, sizeof(buf));
+    if (n > 0) sys_write(1, buf, (uint64_t)n);
+    sys_close(fd);
+
     while (1) {
         sys_write(1, msg_a, sizeof(msg_a) - 1);
         sys_yield();
@@ -61,8 +74,10 @@ void kernel_main(void) {
     rust_heap_init();
     kprint("Heap: ready\n");
 
-    scheduler_init();
+    fs_init();
+    kprint("FS: mounted (ramdisk)\n");
 
+    scheduler_init();
     syscall_init();
     kprint("Syscalls: ready\n");
 

@@ -5,6 +5,9 @@
 .global sys_exit
 .global sys_getpid
 .global sys_yield
+.global sys_open
+.global sys_read
+.global sys_close
 
 sys_write:
     mov x8, #1
@@ -23,5 +26,20 @@ sys_getpid:
 
 sys_yield:
     mov x8, #4
+    svc #0
+    ret
+
+sys_open:
+    mov x8, #5
+    svc #0
+    ret
+
+sys_read:
+    mov x8, #6
+    svc #0
+    ret
+
+sys_close:
+    mov x8, #7
     svc #0
     ret

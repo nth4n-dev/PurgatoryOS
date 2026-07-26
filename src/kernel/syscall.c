@@ -3,6 +3,12 @@
 #include "kernel/scheduler.h"
 #include "drivers/uart.h"
 
+
+/* Imported from libpurgatory_rs.a */
+extern uint32_t fs_open(const char *path, uint64_t len);
+extern int64_t  fs_read(uint32_t id, uint64_t off, char *dst, uint64_t len);
+extern int64_t  fs_close(uint32_t id);
+
 /* Saved register frame layout. Must match SAVE_REGS in vectors.S.
  * Registers are pushed in pairs, lowest index at lowest address. */
 typedef struct regs {
@@ -30,6 +36,81 @@ typedef struct regs {
 #define ESR_EC_SHIFT   26
 #define ESR_EC_MASK    0x3F
 #define EC_SVC64       0x15
+
+/* copy_from_user: bring `len` bytes from the user-space `src` into the
+ * kernel-allocated `dst`. In Post 12 we trust EL0 pointers to be valid
+ *. Post 13's MMU work hardens this with access_ok(). */
+static int64_t copy_from_user(char *dst, const char *src, uint64_t len) {
+    for (uint64_t i = 0; i < len; i++) dst[i] = src[i];
+    return (int64_t)len;
+}
+
+static int64_t copy_to_user(char *dst, const char *src, uint64_t len) {
+    for (uint64_t i = 0; i < len; i++) dst[i] = src[i];
+    return (int64_t)len;
+}
+
+#define PATH_MAX 128
+
+static int64_t k_sys_open(const char *user_path, uint64_t len) {
+    if (len == 0 || len >= PATH_MAX)       return ENAMETOOLONG;
+    if (user_path == NULL)                 return EINVAL;
+
+    /* Copy the path into a kernel buffer before calling Rust. We do
+     * not want a user-space pointer held by the Rust allocator lock. */
+    char path[PATH_MAX];
+    copy_from_user(path, user_path, len);
+    path[len] = '\0';
+
+    uint32_t id = fs_open(path, len);
+    if (id == 0) return ENOENT;
+
+    /* Allocate a free slot in the current task's fd table. fd 0/1/2 are
+     * reserved for stdin/stdout/stderr even though we don't use them yet. */
+    pcb_t *me = current_task_pcb();
+    for (int fd = 3; fd < MAX_OPEN_FILES; fd++) {
+        if (me->fds[fd].node_id == 0) {
+            me->fds[fd].node_id = id;
+            me->fds[fd].offset  = 0;
+            return fd;
+        }
+    }
+    return EMFILE;
+}
+
+static int64_t k_sys_read(int fd, char *user_buf, uint64_t len) {
+    if (fd < 0 || fd >= MAX_OPEN_FILES) return EBADF;
+    if (user_buf == NULL || len == 0)   return 0;
+
+    pcb_t *me = current_task_pcb();
+    fd_entry_t *slot = &me->fds[fd];
+    if (slot->node_id == 0) return EBADF;
+
+    /* Again: bounce through a kernel buffer. Keeps the Rust side from
+     * ever touching EL0-writable memory. 256 B is a generous chunk for
+     * Post 12's demo files; a real read(2) would loop. */
+    char kbuf[256];
+    uint64_t chunk = len > sizeof(kbuf) ? sizeof(kbuf) : len;
+
+    int64_t n = fs_read(slot->node_id, slot->offset, kbuf, chunk);
+    if (n < 0) return n;
+
+    copy_to_user(user_buf, kbuf, (uint64_t)n);
+    slot->offset += (uint64_t)n;
+    return n;
+}
+
+static int64_t k_sys_close(int fd) {
+    if (fd < 0 || fd >= MAX_OPEN_FILES) return EBADF;
+
+    pcb_t *me = current_task_pcb();
+    if (me->fds[fd].node_id == 0) return EBADF;
+
+    fs_close(me->fds[fd].node_id);
+    me->fds[fd].node_id = 0;
+    me->fds[fd].offset  = 0;
+    return 0;
+}
 
 void el0_sync_handler(uint64_t esr, regs_t *r) {
     uint32_t ec = (esr >> ESR_EC_SHIFT) & ESR_EC_MASK;
@@ -72,6 +153,9 @@ static syscall_fn syscall_table[SYS_MAX] = {
     [SYS_EXIT]   = (syscall_fn)k_sys_exit,
     [SYS_GETPID] = (syscall_fn)k_sys_getpid,
     [SYS_YIELD]  = (syscall_fn)k_sys_yield,
+    [SYS_OPEN]   = (syscall_fn)k_sys_open,
+    [SYS_READ]   = (syscall_fn)k_sys_read,
+    [SYS_CLOSE]  = (syscall_fn)k_sys_close,
 };
 
 /* syscall_init. Called once from kernel_main before any EL0 code runs.

@@ -36,6 +36,8 @@
 
 #define USER_STACK_SIZE  (12 * 1024)
 
+#define MAX_OPEN_FILES  8
+
 /* Task state */
 
 typedef enum {
@@ -44,6 +46,16 @@ typedef enum {
     TASK_BLOCKED,   /* waiting for an event (future work)           */
     TASK_DEAD,      /* finished; slot may be reclaimed              */
 } task_state_t;
+
+
+/* An open-file slot. `node_id` is the Rust-side NodeId we got from
+ * fs_open(); `offset` is the per-fd read cursor. A node_id of 0 means
+ * "slot is free". */
+typedef struct {
+    uint32_t node_id;
+    uint64_t offset;
+} fd_entry_t;
+
 
 /* Saved CPU context */
 
@@ -111,6 +123,7 @@ typedef struct {
 typedef struct pcb {
     uint32_t        pid;
     task_state_t    state;
+    fd_entry_t      fds[MAX_OPEN_FILES]; 
     cpu_context_t   ctx;           /* kernel-side callee-saved state. Post 9 */
     user_context_t  uctx;          /* user-side ELR / SPSR / SP_EL0. New     */
     uint8_t        *kstack_base;   /* per-task SP_EL1 backing memory          */
@@ -172,6 +185,11 @@ void task_kill_current(void);
  * current_task_pid: return the PID of the currently running task.
  */
 uint32_t current_task_pid(void);
+
+/*
+ * current_task_pcb: return a pointer to the PCB of the currently running task.
+ */
+pcb_t *current_task_pcb(void);
 
 /* Assembly primitive (defined in arch/arm64/context_switch.S) */
 

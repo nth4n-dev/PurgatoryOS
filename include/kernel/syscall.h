@@ -11,6 +11,9 @@ typedef enum {
     SYS_EXIT   = 2,
     SYS_GETPID = 3,
     SYS_YIELD  = 4,
+    SYS_OPEN   = 5,
+    SYS_READ   = 6,
+    SYS_CLOSE  = 7,
     SYS_MAX
 } syscall_nr_t;
 
@@ -18,6 +21,9 @@ typedef enum {
 #define ENOSYS   -38    /* unknown syscall */
 #define EINVAL   -22    /* bad argument */
 #define EBADF    -9     /* bad file descriptor */
+#define EMFILE   -24    /* too many open files */
+#define ENOENT   -2     /* path not found */
+#define ENAMETOOLONG -36
 
 typedef struct regs regs_t; /* defined in syscall.c */
 
@@ -32,5 +38,11 @@ int64_t sys_exit(int code);
 int64_t sys_getpid(void);
 
 int64_t sys_yield(void);
+
+int64_t sys_open(const char *path, uint64_t len);
+
+int64_t sys_read(int fd, char *buf, uint64_t len);
+
+int64_t sys_close(int fd);
 
 #endif //PURGATORY_SYSCALL_H

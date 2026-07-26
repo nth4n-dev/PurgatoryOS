@@ -5,6 +5,7 @@
 extern crate alloc;   // needed for Box/Vec/etc. inside Rust
 
 mod allocator;
+mod fs;
 mod ffi;
 
 use core::panic::PanicInfo;
