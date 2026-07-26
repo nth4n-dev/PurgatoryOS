@@ -1,3 +1,4 @@
+/* src/boot.S */
 .section .text.boot
 .global _start
 
@@ -23,4 +24,4 @@ _start:
 
     mov x1, sp                 /* x1 → start of parameter block */
     mov w0, #0x18              /* w0 = SYS_EXIT */
-    hlt #0xf000                /* semihosting trap — A64 encoding */
+    hlt #0xf000                /* semihosting trap. A64 encoding */
