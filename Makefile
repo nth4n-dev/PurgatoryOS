@@ -1,53 +1,49 @@
 # CROSS — set to the prefix of your toolchain:
 #   macOS (Homebrew):      aarch64-elf-
 #   Ubuntu / Debian:       aarch64-linux-gnu-
-CROSS ?= aarch64-elf-
+CROSS   ?= aarch64-elf-
 
-AS      = $(CROSS)as
-CC      = $(CROSS)gcc
-LD      = $(CROSS)ld
-OBJDUMP = $(CROSS)objdump
+AS      := $(CROSS)as
+CC      := $(CROSS)gcc
+LD      := $(CROSS)ld
+OBJDUMP := $(CROSS)objdump
 
-SRCDIR  = src
+ASFLAGS := -g
+CFLAGS  := -g -ffreestanding -nostdlib -mcpu=cortex-a53 -O2 -I include
+LDFLAGS := -T src/link.ld
 
-ASFLAGS = -g
-CFLAGS  = -g -ffreestanding -nostdlib -mcpu=cortex-a53 -O2 -I include
-LDFLAGS = -T $(SRCDIR)/link.ld
+C_SRCS  := $(shell find src -name '*.c' 2>/dev/null)
+S_SRCS  := $(shell find src -name '*.S' 2>/dev/null)
 
-TARGET  = kernel.elf
-OBJS    = $(SRCDIR)/arch/boot.o $(SRCDIR)/kernel.o $(SRCDIR)/drivers/uart.o
+C_OBJS  := $(patsubst %.c, build/%.o, $(C_SRCS))
+S_OBJS  := $(patsubst %.S, build/%.o, $(S_SRCS))
+OBJS    := $(C_OBJS) $(S_OBJS)
+
+TARGET  := kernel.elf
+
+.PHONY: all run gdb dump clean
 
 all: $(TARGET)
 
-$(TARGET): $(OBJS) $(SRCDIR)/link.ld
+$(TARGET): $(OBJS) src/link.ld
 	$(LD) $(LDFLAGS) -o $@ $(OBJS)
 
-
-$(SRCDIR)/%.o: $(SRCDIR)/%.S
-	$(AS) $(ASFLAGS) -o $@ $<
-
-$(SRCDIR)/%.o: $(SRCDIR)/%.c
+build/%.o: %.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+build/%.o: %.S
+	@mkdir -p $(dir $@)
+	$(AS) $(ASFLAGS) -o $@ $<
+
 run: $(TARGET)
-	qemu-system-aarch64 \
-		-M virt \
-		-cpu cortex-a53 \
-		-nographic \
-		-kernel $(TARGET)
+	qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel $(TARGET)
 
 gdb: $(TARGET)
-	qemu-system-aarch64 \
-		-M virt \
-		-cpu cortex-a53 \
-		-nographic \
-		-kernel $(TARGET) \
-		-S -gdb tcp::1234
+	qemu-system-aarch64 -M virt -cpu cortex-a53 -nographic -kernel $(TARGET) -S -gdb tcp::1234
 
 dump: $(TARGET)
 	$(OBJDUMP) -d $(TARGET)
 
 clean:
-	rm -f $(OBJS) $(TARGET)
-
-.PHONY: all run gdb dump clean
+	rm -rf build/ $(TARGET)

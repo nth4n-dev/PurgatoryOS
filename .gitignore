@@ -1,0 +1,10 @@
+# Build output
+build/
+*.elf
+*.o
+*.a
+*.bin
+*.map
+
+# macOS
+.DS_Store
