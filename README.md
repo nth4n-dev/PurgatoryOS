@@ -50,8 +50,8 @@ git checkout post-4   # code as of Chapter 4
 | 9 | [Processes & Context Switching: Teaching the Kernel to Multitask](https://www.biosconfessions.com/posts/from-silicon-to-shell/9-processes-and-context-switching) | [`post-9`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-9) |
 | 10 | [System Calls: Drawing the Line Between User and Kernel](https://www.biosconfessions.com/posts/from-silicon-to-shell/10-system-calls) | [`post-10`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-10) |
 | 11 | [Bringing in Rust: A no_std Allocator Under the Kernel](https://www.biosconfessions.com/posts/from-silicon-to-shell/11-bringing-in-rust) | [`post-11`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-11) |
-| 12 | A Simple Filesystem: Turning the Heap Into a Ramdisk | *coming soon* |
-| 13 | Building the Shell: A REPL Over the UART | *coming soon* |
+| 12 | [A Simple Filesystem: Turning the Heap Into a Ramdisk](https://www.biosconfessions.com/posts/from-silicon-to-shell/12-a-simple-filesystem) | [`post-12`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-12) |
+| 13 | [Building the Shell: A REPL Over the UART](https://www.biosconfessions.com/posts/from-silicon-to-shell/13-building-the-shell) | [`post13`](https://github.com/nth4n-dev/PurgatoryOS/tree/post-13) |
 
 ## Prerequisites
 
